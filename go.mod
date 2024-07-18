@@ -1,4 +1,4 @@
-module github.com/nicklaw5/helix/v2
+module github.com/airforce270/helix/v2
 
 go 1.19
 

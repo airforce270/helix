@@ -354,6 +354,8 @@ func (c *Client) doRequest(req *http.Request, resp *Response) error {
 			}
 		}
 
+		log.Printf("req: %+v", req)
+
 		response, err := c.opts.HTTPClient.Do(req)
 		if err != nil {
 			return fmt.Errorf("Failed to execute API request: %s", err.Error())
