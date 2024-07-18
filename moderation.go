@@ -1,6 +1,9 @@
 package helix
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+)
 
 // ExpiresAt must be parsed manually since an empty string means perma ban
 type Ban struct {
@@ -441,6 +444,17 @@ type SendModeratorWarnChatMessageParams struct {
 	Reason string `json:"reason"`
 }
 
+type sendModeratorWarnChatMessageRequest struct {
+	Data sendModeratorWarnChatMessageRequestData `json:"data"`
+}
+
+type sendModeratorWarnChatMessageRequestData struct {
+	// The ID of the user sent the WARN message
+	UserID string `json:"user_id"`
+	// The warn message to send.
+	Reason string `json:"reason"`
+}
+
 type ModeratorWarnChatMessage struct {
 	BroadcasterID string `json:"broadcaster_id"`
 	ModeratorID   string `json:"moderator_id"`
@@ -471,7 +485,14 @@ func (c *Client) SendModeratorWarnMessage(params *SendModeratorWarnChatMessagePa
 		return nil, errors.New("error: user id must be specified")
 	}
 
-	resp, err := c.postAsJSON("/moderation/warnings", &ManyModeratorWarnChatMessages{}, params)
+	req := sendModeratorWarnChatMessageRequest{
+		Data: sendModeratorWarnChatMessageRequestData{
+			UserID: params.UserID,
+			Reason: params.Reason,
+		},
+	}
+
+	resp, err := c.postAsJSON(fmt.Sprintf("/moderation/warnings?broadcaster_id=%s&moderator_id=%s", params.BroadcasterID, params.ModeratorID), &ManyModeratorWarnChatMessages{}, req)
 	if err != nil {
 		return nil, err
 	}
