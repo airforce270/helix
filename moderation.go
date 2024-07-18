@@ -492,7 +492,7 @@ func (c *Client) SendModeratorWarnMessage(params *SendModeratorWarnChatMessagePa
 		},
 	}
 
-	resp, err := c.postAsJSON(fmt.Sprintf("/moderation/warnings?broadcaster_id=%s&moderator_id=%s", params.BroadcasterID, params.ModeratorID), &ManyModeratorWarnChatMessages{}, req)
+	resp, err := c.postAsJSON(fmt.Sprintf("/moderation/warnings?broadcaster_id=%s&moderator_id=%s", params.BroadcasterID, params.ModeratorID), &ManyModeratorWarnChatMessages{}, &req)
 	if err != nil {
 		return nil, err
 	}
