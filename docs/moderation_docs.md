@@ -288,3 +288,57 @@ if err != nil {
 
 fmt.Printf("%+v\n", resp)
 ```
+
+## Get Moderated Channels
+
+To use this function you need a user access token with the `user:read:moderated_channels` scope.
+`UserID` is required and must match the user ID of the user access token.
+
+This is an example of how to get channels the user has moderator privileges in.
+
+```go
+client, err := helix.NewClient(&helix.Options{
+    ClientID: "your-client-id",
+    UserAccessToken: "your-user-access-token",
+})
+if err != nil {
+    // handle error
+}
+
+resp, err := client.GetModeratedChannels(&helix.GetModeratedChannelsParams{
+    UserID: "154315414",
+})
+if err != nil {
+    // handle error
+}
+
+fmt.Printf("%+v\n", resp)
+```
+
+## Warn Chat User
+
+Requires a user access token that includes the moderator:manage:warnings scope. Query parameter moderator_id must match the user_id in the user access token.
+
+```go
+client, err := helix.NewClient(&helix.Options{
+    ClientID: "your-client-id",
+    UserAccessToken: "your-user-access-token",
+})
+if err != nil {
+    // handle error
+}
+
+resp, err := client.SendModeratorWarnMessage(
+    &SendModeratorWarnChatMessageParams{
+        BroadcasterID: "1234",
+        ModeratorID:   "5678",
+        UserID:        "9876",
+        Reason:        "Test warning message",
+    },
+)
+if err != nil {
+    // handle error
+}
+
+fmt.Printf("%+v\n", resp)
+```

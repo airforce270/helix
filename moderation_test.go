@@ -14,7 +14,7 @@ func TestGetBannedUsers(t *testing.T) {
 		statusCode    int
 		options       *Options
 		BroadcasterID string
-		UserID        string
+		UserID        []string
 		After         string
 		Before        string
 		respBody      string
@@ -23,7 +23,7 @@ func TestGetBannedUsers(t *testing.T) {
 			http.StatusBadRequest,
 			&Options{ClientID: "my-client-id"},
 			"", // missing broadcaster id
-			"",
+			[]string{},
 			"",
 			"",
 			`{"error":"Bad Request","status":400,"message":"Missing required parameter \"broadcaster_id\""}`,
@@ -32,7 +32,7 @@ func TestGetBannedUsers(t *testing.T) {
 			http.StatusOK,
 			&Options{ClientID: "my-client-id"},
 			"23161357",
-			"",
+			[]string{},
 			"",
 			"",
 			`{"data":[{"expires_at":"","user_id":"54946241","user_name":"chronophylos","user_name":"chronophylos"},{"expires_at":"2022-03-15T02:00:28Z","user_id":"423374343","user_name":"glowillig"}],"pagination":{"cursor":"eyJiIjpudWxsLCJhIjp7Ik9mZnNldCI6MX19"}}`,
@@ -941,6 +941,312 @@ func TestRemoveChannelModerator(t *testing.T) {
 	}
 
 	_, err := c.RemoveChannelModerator(&RemoveChannelModeratorParams{})
+	if err == nil {
+		t.Error("expected error but got nil")
+	}
+
+	if err.Error() != "Failed to execute API request: Oops, that's bad :(" {
+		t.Error("expected error does match return error")
+	}
+}
+
+func TestGetModeratedChannels(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		statusCode int
+		options    *Options
+		params     *GetModeratedChannelsParams
+		respBody   string
+		parsed     *ManyModeratedChannels
+		errorMsg   string
+	}{
+		{
+			http.StatusOK,
+			&Options{ClientID: "my-client-id", UserAccessToken: "moderatedchannels-access-token"},
+			&GetModeratedChannelsParams{UserID: "154315414", First: 2},
+			`{
+				"data": [
+					{
+						"broadcaster_id": "183094685",
+						"broadcaster_login": "spaceashes",
+						"broadcaster_name": "spaceashes"
+					},
+					{
+						"broadcaster_id": "113944563",
+						"broadcaster_login": "reapex_1",
+						"broadcaster_name": "Reapex_1"
+					}
+				],
+				"pagination": {
+					"cursor": "eyJiIjpudWxsLCJhIjp7IkN1cnNvciI6ImV5SjBjQ0k2SW5WelpYSTZNVFUwTXpFMU5ERTBPbTF2WkdWeVlYUmxjeUlzSW5Seklqb2lZMmhoYm01bGJEb3hNVE01TkRRMU5qTWlMQ0pwY0NJNkluVnpaWEk2TVRVME16RTFOREUwT20xdlpHVnlZWFJsY3lJc0ltbHpJam9pTVRjeE5EVXhNelF4T0RFNE9UTXlPREV4TnlKOSJ9fQ"
+				}
+			}`,
+			&ManyModeratedChannels{
+				ModeratedChannels: []ModeratedChannel{
+					{
+						BroadcasterID:    "183094685",
+						BroadcasterLogin: "spaceashes",
+						BroadcasterName:  "spaceashes",
+					},
+					{
+						BroadcasterID:    "113944563",
+						BroadcasterLogin: "reapex_1",
+						BroadcasterName:  "Reapex_1",
+					},
+				},
+				Pagination: Pagination{
+					Cursor: "eyJiIjpudWxsLCJhIjp7IkN1cnNvciI6ImV5SjBjQ0k2SW5WelpYSTZNVFUwTXpFMU5ERTBPbTF2WkdWeVlYUmxjeUlzSW5Seklqb2lZMmhoYm01bGJEb3hNVE01TkRRMU5qTWlMQ0pwY0NJNkluVnpaWEk2TVRVME16RTFOREUwT20xdlpHVnlZWFJsY3lJc0ltbHpJam9pTVRjeE5EVXhNelF4T0RFNE9UTXlPREV4TnlKOSJ9fQ",
+				},
+			},
+			"",
+		},
+		{
+			http.StatusOK,
+			&Options{ClientID: "my-client-id", UserAccessToken: "moderatedchannels-access-token"},
+			&GetModeratedChannelsParams{UserID: "154315414", After: "eyJiIjpudWxsLCJhIjp7IkN1cnNvciI6ImV5SjBjQ0k2SW5WelpYSTZNVFUwTXpFMU5ERTBPbTF2WkdWeVlYUmxjeUlzSW5Seklqb2lZMmhoYm01bGJEb3hNVE01TkRRMU5qTWlMQ0pwY0NJNkluVnpaWEk2TVRVME16RTFOREUwT20xdlpHVnlZWFJsY3lJc0ltbHpJam9pTVRjeE5EVXhNelF4T0RFNE9UTXlPREV4TnlKOSJ9fQ"},
+			`{
+				"data": [
+					{
+						"broadcaster_id": "106590483",
+						"broadcaster_login": "vaiastol",
+						"broadcaster_name": "vaiastol"
+					}
+				],
+				"pagination": {}
+			}`,
+			&ManyModeratedChannels{
+				ModeratedChannels: []ModeratedChannel{
+					{
+						BroadcasterID:    "106590483",
+						BroadcasterLogin: "vaiastol",
+						BroadcasterName:  "vaiastol",
+					},
+				},
+			},
+			"",
+		},
+		{
+			http.StatusUnauthorized,
+			&Options{ClientID: "my-client-id", UserAccessToken: "invalid-access-token"},
+			&GetModeratedChannelsParams{UserID: "154315414"},
+			`{"error":"Unauthorized","status":401,"message":"Invalid OAuth token"}`,
+			&ManyModeratedChannels{},
+			"",
+		},
+		{
+			http.StatusUnauthorized,
+			&Options{ClientID: "my-client-id", UserAccessToken: "moderatedchannels-access-token"},
+			&GetModeratedChannelsParams{UserID: "123456789"},
+			`{"error":"Unauthorized","status":401,"message":"The ID in user_id must match the user ID found in the request's OAuth token."}`,
+			&ManyModeratedChannels{},
+			"",
+		},
+		{
+			http.StatusUnauthorized,
+			&Options{ClientID: "my-client-id", UserAccessToken: "missingscope-access-token"},
+			&GetModeratedChannelsParams{UserID: "154315414"},
+			`{"error":"Unauthorized","status":401,"message":"Missing scope: user:read:moderated_channels"}`,
+			&ManyModeratedChannels{},
+			"",
+		},
+		{
+			http.StatusBadRequest,
+			&Options{ClientID: "my-client-id", UserAccessToken: "moderatedchannels-access-token"},
+			&GetModeratedChannelsParams{},
+			`{"error":"Bad Request","status":400,"message":"Missing required parameter \"user_id\""}`,
+			&ManyModeratedChannels{},
+			"user id is required",
+		},
+	}
+
+	for _, testCase := range testCases {
+		c := newMockClient(testCase.options, newMockHandler(testCase.statusCode, testCase.respBody, nil))
+
+		resp, err := c.GetModeratedChannels(testCase.params)
+
+		if err != nil {
+			if err.Error() != testCase.errorMsg {
+				t.Errorf("expected error message to be %s, got %s", testCase.errorMsg, err.Error())
+			}
+			continue
+		}
+
+		if resp.StatusCode != testCase.statusCode {
+			t.Errorf("expected status code to be %d, got %d", testCase.statusCode, resp.StatusCode)
+		}
+
+		for i, channel := range resp.Data.ModeratedChannels {
+			if channel.BroadcasterID != testCase.parsed.ModeratedChannels[i].BroadcasterID {
+				t.Errorf("Expected ModeratedChannel field BroadcasterID = %s, was %s", testCase.parsed.ModeratedChannels[i].BroadcasterID, channel.BroadcasterID)
+			}
+
+			if channel.BroadcasterLogin != testCase.parsed.ModeratedChannels[i].BroadcasterLogin {
+				t.Errorf("Expected ModeratedChannel field BroadcasterLogin = %s, was %s", testCase.parsed.ModeratedChannels[i].BroadcasterLogin, channel.BroadcasterLogin)
+			}
+
+			if channel.BroadcasterName != testCase.parsed.ModeratedChannels[i].BroadcasterName {
+				t.Errorf("Expected ModeratedChannel field BroadcasterName = %s, was %s", testCase.parsed.ModeratedChannels[i].BroadcasterName, channel.BroadcasterName)
+			}
+		}
+
+		if resp.Data.Pagination.Cursor != testCase.parsed.Pagination.Cursor {
+			t.Errorf("Expected Pagination field Cursor = %s, was %s", testCase.parsed.Pagination.Cursor, resp.Data.Pagination.Cursor)
+		}
+
+	}
+
+	// Test with HTTP Failure
+	options := &Options{
+		ClientID: "my-client-id",
+		HTTPClient: &badMockHTTPClient{
+			newMockHandler(0, "", nil),
+		},
+	}
+	c := &Client{
+		opts: options,
+		ctx:  context.Background(),
+	}
+
+	_, err := c.GetModeratedChannels(&GetModeratedChannelsParams{UserID: "154315414"})
+	if err == nil {
+		t.Error("expected error but got nil")
+	}
+
+	if err.Error() != "Failed to execute API request: Oops, that's bad :(" {
+		t.Error("expected error does match return error")
+	}
+}
+
+func TestSendModeratorWarnMessage(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		statusCode int
+		options    *Options
+		params     *SendModeratorWarnChatMessageParams
+		respBody   string
+		errorMsg   string
+	}{
+		{
+			http.StatusOK,
+			&Options{ClientID: "my-client-id", UserAccessToken: "moderator-access-token"},
+			&SendModeratorWarnChatMessageParams{
+				BroadcasterID: "1234",
+				ModeratorID:   "5678",
+				UserID:        "9876",
+				Reason:        "Test warning message",
+			},
+			`{"data": [{"broadcaster_id": "1234", "moderator_id": "5678", "user_id": "9876", "reason": "Test warning message"}]}`,
+			"",
+		},
+		{
+			http.StatusOK,
+			&Options{ClientID: "my-client-id", UserAccessToken: "invalid-access-token"},
+			&SendModeratorWarnChatMessageParams{
+				BroadcasterID: "1234",
+				ModeratorID:   "5678",
+				Reason:        "Test warning message",
+			},
+			"",
+			"error: user id must be specified",
+		},
+		{
+			http.StatusOK,
+			&Options{ClientID: "my-client-id", UserAccessToken: "invalid-access-token"},
+			&SendModeratorWarnChatMessageParams{
+				UserID:      "1234",
+				ModeratorID: "5678",
+				Reason:      "Test warning message",
+			},
+			"",
+			"error: broadcaster id must be specified",
+		},
+		{
+			http.StatusOK,
+			&Options{ClientID: "my-client-id", UserAccessToken: "invalid-access-token"},
+			&SendModeratorWarnChatMessageParams{
+				UserID:        "1234",
+				BroadcasterID: "12345",
+				Reason:        "Test warning message",
+			},
+			"",
+			"error: moderator id must be specified",
+		},
+		{
+			http.StatusUnauthorized,
+			&Options{ClientID: "my-client-id", UserAccessToken: "invalid-access-token"},
+			&SendModeratorWarnChatMessageParams{
+				BroadcasterID: "1234",
+				ModeratorID:   "5678",
+				UserID:        "9876",
+				Reason:        "Test warning message",
+			},
+			`{"error":"Unauthorized","status":401,"message":"Invalid OAuth token"}`,
+			"",
+		},
+		// Add more test cases as needed
+	}
+
+	for _, testCase := range testCases {
+		c := newMockClient(testCase.options, newMockHandler(testCase.statusCode, testCase.respBody, nil))
+
+		resp, err := c.SendModeratorWarnMessage(testCase.params)
+		if err != nil {
+			if err.Error() != testCase.errorMsg {
+				t.Errorf("expected error message to be %s, got %s", testCase.errorMsg, err.Error())
+			}
+			continue
+		}
+
+		if resp.StatusCode != testCase.statusCode {
+			t.Errorf("expected status code to be %d, got %d", testCase.statusCode, resp.StatusCode)
+		}
+
+		if resp.StatusCode > http.StatusOK {
+			continue
+		}
+
+		if len(resp.Data.Warnings) == 0 {
+			continue
+		}
+		warning := resp.Data.Warnings[0]
+
+		if warning.BroadcasterID != testCase.params.BroadcasterID {
+			t.Errorf("expected broadcaster id to be %s, got %s", testCase.params.BroadcasterID, warning.BroadcasterID)
+		}
+
+		if warning.ModeratorID != testCase.params.ModeratorID {
+			t.Errorf("expected moderator id to be %s, got %s", testCase.params.ModeratorID, warning.ModeratorID)
+		}
+
+		if warning.UserID != testCase.params.UserID {
+			t.Errorf("expected user id to be %s, got %s", testCase.params.UserID, warning.UserID)
+		}
+
+		if warning.Reason != testCase.params.Reason {
+			t.Errorf("expected reason to be %s, got %s", testCase.params.Reason, warning.Reason)
+		}
+	}
+
+	// Test with HTTP Failure
+	options := &Options{
+		ClientID: "my-client-id",
+		HTTPClient: &badMockHTTPClient{
+			newMockHandler(0, "", nil),
+		},
+	}
+	c := &Client{
+		opts: options,
+		ctx:  context.Background(),
+	}
+
+	_, err := c.SendModeratorWarnMessage(&SendModeratorWarnChatMessageParams{
+		BroadcasterID: "1234",
+		ModeratorID:   "5678",
+		UserID:        "9876",
+		Reason:        "Test warning message",
+	})
 	if err == nil {
 		t.Error("expected error but got nil")
 	}
